@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import division
-
 import os
 import pickle as pkl
 import pytraj as pt
@@ -9,21 +8,23 @@ import pandas as pd
 import numpy as np
 import numpy.linalg as ln
 
-pdbs = pd.read_pickle("pdbCodes.dat")
+pdbs300 = pd.read_pickle("pdbCodes300K.dat") # temperature: 300K 
+pdbs350 = pd.read_pickle("pdbCodes350K.dat") # temperature: 350K
 
 
 class Protein:
-    def __init__(self, prot, strd=0, process_new=False, save_new=False):
+    def __init__(self, prot, strd=0, process_new=False, save_new=False, temperature=300):
 
         self.prot = prot
         self.strd = strd
+	self.temperature = temperature
         if '_sh' in prot:
             self.PDBcode = prot[:-3].upper()
         else:
             self.PDBcode = prot.upper()
 
-        print('Processing {}'.format(self.PDBcode))
-        self.data_path = 'processedData/data_{}'.format(self.PDBcode)
+        print('\nProcessing {}'.format(self.PDBcode))
+        self.data_path = 'processedData/temp{}K/data_{}'.format(self.temperature, self.PDBcode)
 
         if not process_new:
             try:
@@ -32,6 +33,7 @@ class Protein:
 
                 self.atoms = loadedData['resnum']
                 self.frames = loadedData['frames']
+		self.temperature = loadedData['temperature']
                 self.rg = loadedData['radgyr']
                 self.avg_dist = loadedData['avg_dist']
                 self.shape_factor = loadedData['shape_factor']
@@ -48,10 +50,10 @@ class Protein:
                 self.ppal = loadedData['ppal']
 
                 f.close()
-                print('Loaded data_{}.'.format(self.PDBcode))
+                print('Loaded data_{}'.format(self.PDBcode))
 
             except IOError:
-                print('File not found, processing new trajectory.')
+                print('File not found, processing new trajectory')
                 process_new = True
 
         if process_new:
@@ -62,6 +64,7 @@ class Protein:
             print('PDB code: {}'.format(self.PDBcode))
             print('residues: {}'.format(self.atoms))
             print('frames: {}'.format(self.frames))
+	    print('temperature: {}'.format(self.temperature))
 
             pt.principal_axes(self.traj, dorotation=True)
             pt.center(self.traj, center='origin')
@@ -112,11 +115,12 @@ class Protein:
 
         dataset = {'PDBcode': self.PDBcode,
                    'resnum': self.atoms,
+		   'temperature': self.temperature,
                    'frames': self.frames,
                    'radgyr': self.rg,
                    'avg_dist': self.avg_dist,
                    'shape_factor': self.shape_factor,
-        		   'SF_fluct': self.SF_fluct,
+                   'SF_fluct': self.SF_fluct,
                    'suceptibility': self.suceptibility,
                    'correl_len': self.corr_len,
                    'fluct_norms': self.fluct_norms,
@@ -126,15 +130,16 @@ class Protein:
                    'covariance': self.cov,
                    'fluctuations': self.fluct,
                    'trajectory': self.traj.xyz,
-		           'ppal': self.ppal}
+                   'ppal': self.ppal}
 
         pkl.dump(dataset, f)
         print('Saved data_{}'.format(self.PDBcode))
         f.close()
 
     def loadtraj(self):
-        trajPath = os.path.join(self.prot, 'input', 'nowat.{}.nc'.format(self.prot))
-        topPath = os.path.join(self.prot, 'input', 'nowat.{}.prmtop'.format(self.prot))
+	filesPath = os.path.join(self.prot, 'temp{}k'.format(self.temperature), 'input')
+        trajPath = os.path.join(filesPath, 'nowat.{}.nc'.format(self.prot))
+        topPath = os.path.join(filesPath, 'nowat.{}.prmtop'.format(self.prot))
         self.traj = pt.load(trajPath, topPath, mask = '@CA', stride = self.strd)
 
     def avg_corr(self): 
@@ -147,9 +152,9 @@ class Protein:
         self.avgd_corr = self.avgd_corr.rolling(self.atoms).mean()
         self.avgd_corr.dropna(axis = 0, inplace = True)
         
-        mindist = float(self.avgd_corr['distance'][self.avgd_corr['correlation'] == self.avgd_corr['correlation'].min()])
-        condition = np.logical_and(abs(self.avgd_corr['correlation']) <= 1e-2, self.avgd_corr['distance'] <= mindist)
-        self.corr_len = self.avgd_corr['distance'][condition].mean()
+	# correlation length defined as the first negative or zero correlation point
+	cl_idx = (self.avgd_corr.correlation <= 0).idxmax()
+        self.corr_len = self.avgd_corr.distance[cl_idx] 
         print('averaged correlation')
 
     def calcFluct(self):
@@ -200,14 +205,14 @@ class Protein:
         self.ppal = [axisX, axisY, axisZ]
 
     def shape_factor_fluct(self):
-	    xyz = self.traj.xyz
+	xyz = self.traj.xyz
 
-	    for frm in xyz:
-           	 Lx = abs(max([q[0] for q in frm]) - min([q[0] for q in frm])) / 2
-           	 Ly = abs(max([q[1] for q in frm]) - min([q[1] for q in frm])) / 2
-           	 Lz = abs(max([q[2] for q in frm]) - min([q[2] for q in frm])) / 2
-           	 S = self.atoms * (3.8 ** 3) / (Lx * Ly * Lz)
-           	 self.SF_fluct.append(S)
+	for frm in xyz:
+            Lx = abs(max([q[0] for q in frm]) - min([q[0] for q in frm])) / 2
+            Ly = abs(max([q[1] for q in frm]) - min([q[1] for q in frm])) / 2
+            Lz = abs(max([q[2] for q in frm]) - min([q[2] for q in frm])) / 2
+            S = self.atoms * (3.8 ** 3) / (Lx * Ly * Lz)
+            self.SF_fluct.append(S)
 
     def suceptibility(self):
         self.avg_corr()
@@ -215,4 +220,5 @@ class Protein:
         y = self.avgd_corr['correlation'][self.avgd_corr['distance'] <= self.corr_len]
         suceptibility = (self.shape_factor / self.traj.n_atoms) * sum(y) 
         return suceptibility
+
 
