@@ -1,0 +1,7 @@
+parm ../input/VAR.prmtop
+trajin 03_Prod.nc
+autoimage
+strip :WAT outprefix nowat
+trajout input/nowat.VAR.nc netcdf
+run
+exit
