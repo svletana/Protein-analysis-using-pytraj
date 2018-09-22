@@ -1,4 +1,7 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-"""
+"""
+Class for processing Amber MD simulation data
+"""
 
 from __future__ import division
 import os
@@ -8,8 +11,8 @@ import pandas as pd
 import numpy as np
 import numpy.linalg as ln
 
-pdbs300 = pd.read_pickle("pdbCodes300K.dat") # temperature: 300K 
-pdbs350 = pd.read_pickle("pdbCodes350K.dat") # temperature: 350K
+pdbs300 = pd.read_pickle("pdbCodes300K.dat")  # temperature: 300K
+pdbs350 = pd.read_pickle("pdbCodes350K.dat")  # temperature: 350K
 
 
 class Protein:
@@ -17,7 +20,7 @@ class Protein:
 
         self.prot = prot
         self.strd = strd
-	self.temperature = temperature
+        self.temperature = temperature
         if '_sh' in prot:
             self.PDBcode = prot[:-3].upper()
         else:
@@ -33,7 +36,7 @@ class Protein:
 
                 self.atoms = loadedData['resnum']
                 self.frames = loadedData['frames']
-		self.temperature = loadedData['temperature']
+                self.temperature = loadedData['temperature']
                 self.rg = loadedData['radgyr']
                 self.avg_dist = loadedData['avg_dist']
                 self.shape_factor = loadedData['shape_factor']
@@ -64,7 +67,7 @@ class Protein:
             print('PDB code: {}'.format(self.PDBcode))
             print('residues: {}'.format(self.atoms))
             print('frames: {}'.format(self.frames))
-	    print('temperature: {}'.format(self.temperature))
+            print('temperature: {}'.format(self.temperature))
 
             pt.principal_axes(self.traj, dorotation=True)
             pt.center(self.traj, center='origin')
@@ -109,13 +112,12 @@ class Protein:
             if save_new:
                 self.saveData()
 
-
     def saveData(self):
         f = open(self.data_path, 'wb')
 
         dataset = {'PDBcode': self.PDBcode,
                    'resnum': self.atoms,
-		   'temperature': self.temperature,
+                   'temperature': self.temperature,
                    'frames': self.frames,
                    'radgyr': self.rg,
                    'avg_dist': self.avg_dist,
@@ -137,24 +139,23 @@ class Protein:
         f.close()
 
     def loadtraj(self):
-	filesPath = os.path.join(self.prot, 'temp{}k'.format(self.temperature), 'input')
+        filesPath = os.path.join(self.prot, 'temp{}k'.format(self.temperature), 'input')
         trajPath = os.path.join(filesPath, 'nowat.{}.nc'.format(self.prot))
         topPath = os.path.join(filesPath, 'nowat.{}.prmtop'.format(self.prot))
-        self.traj = pt.load(trajPath, topPath, mask = '@CA', stride = self.strd)
+        self.traj = pt.load(trajPath, topPath, mask='@CA', stride=self.strd)
 
-    def avg_corr(self): 
+    def avg_corr(self):
         flat_corr = np.ndarray.flatten(np.array(self.corr))
         flat_dist = np.ndarray.flatten(np.array(self.dist))
 
         self.avgd_corr = pd.DataFrame({'distance': flat_dist, 'correlation': flat_corr})
-        self.avgd_corr.sort_values(by = ['distance'], inplace = True)
+        self.avgd_corr.sort_values(by=['distance'], inplace=True)
         self.avgd_corr = self.avgd_corr[self.avgd_corr.distance != 0]
         self.avgd_corr = self.avgd_corr.rolling(self.atoms).mean()
-        self.avgd_corr.dropna(axis = 0, inplace = True)
-        
-	# correlation length defined as the first negative or zero correlation point
-	cl_idx = (self.avgd_corr.correlation <= 0).idxmax()
-        self.corr_len = self.avgd_corr.distance[cl_idx] 
+        self.avgd_corr.dropna(axis=0, inplace=True)
+        # correlation length defined as the first negative or zero value
+        cl_idx = (self.avgd_corr.correlation <= 0).idxmax()
+        self.corr_len = self.avgd_corr.distance[cl_idx]
         print('averaged correlation')
 
     def calcFluct(self):
@@ -163,7 +164,7 @@ class Protein:
         # Calculate average structure
         self.avg = pt.mean_structure(self.traj)
         # Perform rms fit to average structure
-        pt.rmsd(self.traj, ref = self.avg)
+        pt.rmsd(self.traj, ref=self.avg)
         # Calculate fluctuations
         for frame in self.traj:
             diff = frame.xyz - self.avg
@@ -184,12 +185,12 @@ class Protein:
             for j in range(self.atoms):
                 self.corr[i][j] = self.cov[i][j] / np.sqrt(self.cov[i][i] * self.cov[j][j])
                 self.dist[i][j] = pt.distance(self.traj, ':{} :{}'.format(i+1, j+1), frame_indices=[0])[0]
-    
+
     def calcPrincipalAxes(self):
         # Principal axes length
         xyz = self.traj.xyz
 
-        minx = np.mean([min([q[0] for q in xyz[i]]) for i in range(self.frames)]) 
+        minx = np.mean([min([q[0] for q in xyz[i]]) for i in range(self.frames)])
         maxx = np.mean([max([q[0] for q in xyz[i]]) for i in range(self.frames)])
 
         miny = np.mean([min([q[1] for q in xyz[i]]) for i in range(self.frames)])
@@ -205,9 +206,9 @@ class Protein:
         self.ppal = [axisX, axisY, axisZ]
 
     def shape_factor_fluct(self):
-	xyz = self.traj.xyz
+        xyz = self.traj.xyz
 
-	for frm in xyz:
+        for frm in xyz:
             Lx = abs(max([q[0] for q in frm]) - min([q[0] for q in frm])) / 2
             Ly = abs(max([q[1] for q in frm]) - min([q[1] for q in frm])) / 2
             Lz = abs(max([q[2] for q in frm]) - min([q[2] for q in frm])) / 2
@@ -218,7 +219,5 @@ class Protein:
         self.avg_corr()
         x = self.avgd_corr['distance'][self.avgd_corr['distance'] <= self.corr_len]
         y = self.avgd_corr['correlation'][self.avgd_corr['distance'] <= self.corr_len]
-        suceptibility = (self.shape_factor / self.traj.n_atoms) * sum(y) 
+        suceptibility = (self.shape_factor / self.traj.n_atoms) * sum(y)
         return suceptibility
-
-
