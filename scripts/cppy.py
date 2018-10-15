@@ -257,10 +257,8 @@ class Protein:
     def calc_fluct(self):
         '''Calculate atom/residue fluctuation from the average position.'''
         # Calculate fluctuations
-        for frame in self.traj:
-            diff = frame.xyz - self.avg
-            self.fluct.append(diff)
-            self.fluct_norms.append([ln.norm(r) for r in diff])
+        self.fluct = [frm.xyz - self.avg for frm in self.traj]
+        self.fluct_norms = [[ln.norm(r) for r in diff] for diff in self.fluct]
         print(u'\u2713 calculated fluctuations')
 
     def calc_cov(self):
