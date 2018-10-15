@@ -3,7 +3,9 @@ Some miscellaneous scripts I made to do protein analysis using [pytraj](http://a
 
 _This is a work in progress..._
 
-#### cppy.py
+You can find the scripts I use in the scripts folder.
+
+#### scripts/scppy.py
 Loads the MD production files ready for processing. Before calculating any quantity it centers the molecule at the origin and minimizes RMSD.
 
 #### scripts/getpdbs.py
@@ -14,3 +16,6 @@ Runs afterProd.in using cpptraj, organizes data in folders as it's convenient fo
 
 #### scripts/afterProd.in
 Removes water molecules for later analysis. The most important stuff is done with pytraj when running cppy.py.
+
+#### scripts/update_codes.py
+Update PDB codes on _codes\_n\_temps.csv_ according to the simulation data that it finds on the folders _(which is outdated in this repository...)_.
