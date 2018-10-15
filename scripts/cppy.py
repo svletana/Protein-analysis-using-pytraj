@@ -13,7 +13,6 @@ import numpy as np
 import numpy.linalg as ln
 
 
-
 class Protein:
     '''
     Class for trajectory analysis of Amber MD simulation data.
