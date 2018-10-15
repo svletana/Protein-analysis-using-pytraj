@@ -17,7 +17,46 @@ import numpy.linalg as ln
 class Protein:
     '''
     Class for trajectory analysis of Amber MD simulation data.
-    Uses numpy, pandas and pytraj to calculate some quantities of my choice.
+    Uses Pytraj to calculate some quantities of my choice.
+
+    Example:
+    >>> prot = cppy.Protein("1xwn_sh")
+    
+    Processing 1XWN
+    
+    PROTEIN INFORMATION
+    PDB code: 1XWN
+    residues: 166
+    frames: <FRAMES>
+    temperature: 300
+    >>> print(prot.PDB)
+    1XWN
+    >>> # if data not found
+    >>> prot = cppy.Protein("1xwn_sh", load_saved=True)
+    
+    Processing 1XWN
+    Couldn't load data, processing new.
+    
+    PROTEIN INFORMATION
+    PDB code: 1XWN
+    residues: 166
+    frames: 2000
+    temperature: 300
+    >>> # otherwise
+    >>> prot = cppy.Protein("1xwn_sh", load_saved=True)
+    
+    Processing 1XWN
+    Loaded data_1XWN
+    
+    PROTEIN INFORMATION
+    PDB code: 1XWN
+    residues: 166
+    frames: 2000
+    temperature: 300
+    
+    >>> # print radius of gyration
+    >>> prot.rg
+    15.068800201513314
     '''
 
     def __init__(self, prot, strd=0, mask="@CA", calc_all=False,
@@ -57,7 +96,8 @@ class Protein:
 
     def load_data(self):
         with open(os.path.join(self.absol, 'processed_data', self.data_path), 'rb') as f:
-            loadedData = pkl.load(f)
+            # there's some issue with encoding and pickle in python 3
+            loadedData = pkl.load(f, encoding='latin1')
 
             self.ppal = loadedData['ppal']
             self.rg = loadedData['radgyr']
