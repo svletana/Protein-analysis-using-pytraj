@@ -40,7 +40,7 @@ class Protein:
     PROTEIN INFORMATION
     PDB code: 1XWN
     residues: 166
-    frames: 2000
+    frames: <FRAMES>
     temperature: 300
     >>> # otherwise
     >>> prot = cppy.Protein("1xwn_sh", load_saved=True)
@@ -51,7 +51,7 @@ class Protein:
     PROTEIN INFORMATION
     PDB code: 1XWN
     residues: 166
-    frames: 2000
+    frames: <FRAMES>
     temperature: 300
     
     >>> # print radius of gyration
