@@ -11,6 +11,8 @@ import pytraj as pt
 import pandas as pd
 import numpy as np
 import numpy.linalg as ln
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 
 class Protein:
@@ -172,10 +174,6 @@ class Protein:
         self.suceptibility = 0
         # time averaged MSD
         self.TA_MSD = []
-        # autocorrelation
-        self.C_r = {}
-        #self.t_cov = np.zeros((self.frames, self.atoms, self.atoms))
-        #self.t_dist = np.zeros((self.frames, self.atoms, self.atoms))
 
     def save_data(self):
         '''Save all data to binary file.'''
@@ -237,7 +235,22 @@ class Protein:
         # compute TA-MSD
         # self.calc_TA_MSD() # not yet
         # compute autocorrelation in terms of the lag
-        #self.calc_autocov() 
+        self.autocorr = self.calc_autocorr() 
+
+    def graph_protein(self, frame, color='grey'):
+        '''Draws protein in 3D in matplotlib.
+           Frame: frame to plot.
+           Color: color to be used in plot.'''
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        xyz = self.traj.xyz[frame]
+        X = [i[0] for i in xyz]
+        Y = [i[1] for i in xyz]
+        Z = [i[2] for i in xyz]
+        ax.plot(X, Y, Z, '-o', c=color)
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.show(block=False)
 
     def calc_fluct(self):
         '''Calculate atom/residue fluctuation from the average position.'''
@@ -333,36 +346,13 @@ class Protein:
         self.suceptibility = (1 / self.atoms) * sum(y) 
         print(u'\u2713 calculated suceptibility')
 
-## this is awful
-#    def calc_autocov(self):
-#        # Compute autocorrelation
-#        # TO-DO: implement averaging of C_r (moving frm0)
-#        f_frm0 = self.fluct[0] # first frame fluct
-#        f_norm0 = np.mean([np.dot(f_frm0[i], f_frm0[i]) for i in range(self.atoms)])
-#        f_frm0 /= f_norm0
-#
-#        xyz0 = self.traj.xyz[0] # first coordinates frame
-#        dr = 5 # step in distance
-#
-#        for q in range(self.frames):
-#            xyz = self.traj.xyz[q]
-#            fluct = self.fluct[q]
-#            f_norm = np.mean([np.dot(fluct[i], fluct[i]) for i in range(self.atoms)])
-#            for i in range(self.atoms):
-#                for j in range(self.atoms):
-#                    f_frm = fluct[j]/f_norm # q-th fluct frame for j
-#                    d_frm = xyz[j] # q-th dist frame for j
-#                    t_dist = int(ln.norm(xyz0[i] - d_frm))
-#
-#                    r_val = t_dist - t_dist % dr 
-#                    AC_ij = self.C_r.get(r_val, pd.Series(np.zeros(self.frames)))
-#                    AC_ij[q] += np.sum(np.prod([f_frm0[i], f_frm], axis=0)) # falta contar la cantidad de veces que agrego esto, dividir por ese numero de veces
-#                    self.C_r[r_val] = AC_ij
-#                    #self.t_cov[q][i][j] = np.sum(np.prod([f_frm0[i], f_frm], axis=0))
-#                    #self.t_dist[q][i][j] = ln.norm(xyz0[i] - d_frm)
-#
-#        print(u'\u2713 calculated autocorrelation')
-
+    def calc_autocorr(self):
+        '''Autocorrelation between the center of mass
+        of the two halves of the protein.'''
+        half = int(self.atoms / 2)
+        R = pd.Series(pt.distance(self.traj, ':1-{} :{}-{}'.format(half, half, self.atoms)))
+        # [R.autocorr(lag=i) for i in range(self.frames-5)]
+        self.autocorr = pt.acorr(R)
 
     def calc_TA_MSD(self):
         '''Time averaged mean squared deviation.'''
