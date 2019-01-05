@@ -154,6 +154,8 @@ class Protein:
         pt.rmsd(self.traj, ref=self.avg)
 
     def initialize_arrays(self):
+        # average distance between residues
+        self.avg_dist = 0
         # fluctuations
         self.fluct = []
         # magnitude of fluctuations
@@ -225,8 +227,7 @@ class Protein:
         # calculate radius of gyrations
         self.rg = np.mean(pt.radgyr(self.traj))
         # computes average distance between residues (~3.8A = .38nm)
-        temp_dist = [self.dist[i][i+1] for i in range(self.traj.n_atoms - 1)]
-        self.avg_dist = np.mean(temp_dist)
+        self.calc_avg_dist()
         # calculate shape factor fluctuations and mean value
         self.shape_factor_fluct()
         self.shape_factor = np.mean(self.SF_fluct)
@@ -251,6 +252,14 @@ class Protein:
         plt.xlabel('X')
         plt.ylabel('Y')
         plt.show(block=False)
+
+    def calc_avg_dist(self):
+        avg_d = []
+        for i in range(self.atoms - 2):
+            mask = ":{} :{}".format(i+1, i+2)
+            dd = np.mean(pt.distance(self.traj, mask))
+            avg_d.append(dd)
+        self.avg_dist = np.mean(avg_d)
 
     def calc_fluct(self):
         '''Calculate atom/residue fluctuation from the average position.'''
